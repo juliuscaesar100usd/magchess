@@ -1,101 +1,80 @@
-import Image from "next/image";
+import Link from 'next/link';
+import { Crown, Zap, Trophy, Brain, Coins, MapPin } from 'lucide-react';
 
-export default function Home() {
+const FEATURES = [
+  { icon: Zap, title: 'Bullet · Blitz · Rapid', desc: 'Fast-paced time controls with win streaks and milestone badges.' },
+  { icon: Trophy, title: 'City Leaderboards', desc: 'Compete with players in your city and climb local rankings.' },
+  { icon: Brain, title: 'AI Coach', desc: 'Post-game analysis powered by Stockfish — blunders, mistakes, better moves.' },
+  { icon: Coins, title: 'Stake Chess', desc: 'Put coins on the line. Winner takes the pot (minus a small fee).' },
+  { icon: MapPin, title: 'Geo Rankings', desc: 'Global and city-filtered leaderboards with shareable badges.' },
+  { icon: Crown, title: 'Chess Podcast', desc: 'Real-time audio commentary narrates every move during AI games.' },
+];
+
+export default function LandingPage() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen bg-zinc-950 text-white">
+      {/* Hero */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent pointer-events-none" />
+        <div className="mx-auto max-w-5xl px-6 pt-20 pb-16 text-center">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <Crown size={48} className="text-amber-400" />
+          </div>
+          <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-4">
+            Mag<span className="text-amber-400">Chess</span>
+          </h1>
+          <p className="text-xl text-zinc-400 max-w-xl mx-auto mb-10">
+            Play chess that matters. Compete, learn, stake coins, and climb your city&apos;s leaderboard.
+          </p>
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold px-8 py-3.5 text-lg transition-colors"
+            >
+              Play for Free
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 hover:bg-zinc-800 text-zinc-300 font-semibold px-8 py-3.5 text-lg transition-colors"
+            >
+              Sign In
+            </Link>
+          </div>
+          <p className="mt-4 text-sm text-zinc-500">Start with 50 free coins. No credit card required.</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {/* Features grid */}
+      <div className="mx-auto max-w-5xl px-6 py-16">
+        <h2 className="text-2xl font-bold text-center mb-10 text-zinc-200">Everything a serious player needs</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {FEATURES.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 hover:border-zinc-700 transition-colors">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/15">
+                  <Icon size={18} className="text-amber-400" />
+                </div>
+                <h3 className="font-semibold text-white">{title}</h3>
+              </div>
+              <p className="text-sm text-zinc-400 leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="mx-auto max-w-2xl px-6 pb-24 text-center">
+        <div className="rounded-2xl bg-gradient-to-br from-amber-500/10 to-zinc-900 border border-amber-500/20 p-10">
+          <h2 className="text-3xl font-bold mb-3">Ready to play?</h2>
+          <p className="text-zinc-400 mb-6">Join thousands of players competing right now.</p>
+          <Link
+            href="/signup"
+            className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold px-8 py-3.5 text-lg transition-colors"
+          >
+            Get Started — Free
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
