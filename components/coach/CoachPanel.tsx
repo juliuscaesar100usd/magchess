@@ -53,10 +53,16 @@ export function CoachPanel({ gameId, pgn }: CoachPanelProps) {
     if (!res.ok) {
       setError(data.error ?? 'Analysis failed');
     } else {
-      setAnalysis(data as CoachAnalysis);
+      const coachData = data as CoachAnalysis;
+      setAnalysis(coachData);
       const fens = getFenHistory(pgn);
       setFenHistory(fens);
-      setCurrentIndex(fens.length - 1);
+      const lastIdx = fens.length - 1;
+      setCurrentIndex(lastIdx);
+      // Initialise eval bar at the final position
+      if (coachData.evals?.length) {
+        setCurrentEval(coachData.evals[lastIdx] ?? coachData.evals[coachData.evals.length - 1]);
+      }
       trackEvent('coach_use', { gameId }, profile?.id);
     }
     setLoading(false);
@@ -83,13 +89,9 @@ export function CoachPanel({ gameId, pgn }: CoachPanelProps) {
 
   const navigateTo = (index: number) => {
     setCurrentIndex(index);
-    if (analysis) {
-      // Find eval at this position from blunders/mistakes
-      const moveNum = Math.ceil(index / 2);
-      const critique = [...(analysis.blunders ?? []), ...(analysis.mistakes ?? [])].find(
-        (c) => c.move_number === moveNum
-      );
-      if (critique) setCurrentEval(critique.eval_after);
+    // evals[index] is the evaluation at fenHistory[index] (white's perspective)
+    if (analysis?.evals?.length) {
+      setCurrentEval(analysis.evals[index] ?? analysis.evals[analysis.evals.length - 1] ?? 0);
     }
   };
 

@@ -33,5 +33,6 @@ export interface CoachAnalysis {
   accuracy_black: number;
   level: CoachLevel;
   was_free: boolean;
+  evals: number[];
   created_at: string;
 }

@@ -194,6 +194,7 @@ CREATE TABLE public.ai_coach_analyses (
   accuracy_black NUMERIC(5,2),
   level        TEXT NOT NULL DEFAULT 'beginner',
   was_free     BOOLEAN NOT NULL DEFAULT false,
+  evals        JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(user_id, game_id)
 );

@@ -11,64 +11,64 @@ type StockfishEngine = {
   onmessage: (line: string) => void;
 };
 
-function createEngine(): StockfishEngine {
-  return Stockfish() as StockfishEngine;
-}
-
-async function analyzePosition(fen: string, depth = 14): Promise<number> {
-  return new Promise((resolve) => {
-    try {
-      const engine = createEngine();
-      let lastCp = 0;
-      engine.onmessage = (line: string) => {
-        if (line.includes('score cp')) {
-          const m = line.match(/score cp (-?\d+)/);
-          if (m) lastCp = parseInt(m[1], 10);
-        } else if (line.includes('score mate')) {
-          const m = line.match(/score mate (-?\d+)/);
-          if (m) lastCp = parseInt(m[1], 10) > 0 ? 30000 : -30000;
-        }
-        if (line.startsWith('bestmove')) {
-          const isBlack = fen.split(' ')[1] === 'b';
-          engine.postMessage('quit');
-          resolve(isBlack ? -lastCp : lastCp);
-        }
-      };
-      engine.postMessage('uci');
-      engine.postMessage(`position fen ${fen}`);
-      engine.postMessage(`go depth ${depth}`);
-    } catch {
-      resolve(0);
-    }
+// Create one engine and wait for it to be fully ready before returning.
+function createReadyEngine(): Promise<StockfishEngine> {
+  return new Promise((resolve, reject) => {
+    const engine = Stockfish() as StockfishEngine;
+    const timer = setTimeout(() => reject(new Error('Engine init timeout')), 10_000);
+    engine.onmessage = (line: string) => {
+      if (line === 'uciok') {
+        engine.postMessage('isready');
+      } else if (line === 'readyok') {
+        clearTimeout(timer);
+        resolve(engine);
+      }
+    };
+    engine.postMessage('uci');
   });
 }
 
-async function getBestMoveSan(fen: string, depth = 12): Promise<string> {
+// Evaluate a FEN position with a pre-initialized engine.
+// Returns centipawns from WHITE's perspective.
+function evalPosition(engine: StockfishEngine, fen: string, depth: number): Promise<number> {
   return new Promise((resolve) => {
-    try {
-      const engine = createEngine();
-      engine.onmessage = (line: string) => {
-        if (line.startsWith('bestmove')) {
-          engine.postMessage('quit');
-          const uci = line.split(' ')[1] ?? '';
-          const tempChess = new Chess(fen);
-          const from = uci.slice(0, 2);
-          const to = uci.slice(2, 4);
-          const promotion = uci[4];
-          try {
-            const result = tempChess.move({ from, to, promotion: promotion || undefined });
-            resolve(result?.san ?? uci);
-          } catch {
-            resolve(uci);
-          }
+    let lastCp = 0;
+    engine.onmessage = (line: string) => {
+      if (line.includes('score cp')) {
+        const m = line.match(/score cp (-?\d+)/);
+        if (m) lastCp = parseInt(m[1], 10);
+      } else if (line.includes('score mate')) {
+        const m = line.match(/score mate (-?\d+)/);
+        if (m) lastCp = parseInt(m[1], 10) > 0 ? 30_000 : -30_000;
+      } else if (line.startsWith('bestmove')) {
+        // Engine returns score from the side-to-move's perspective; normalise to white.
+        const isBlack = fen.split(' ')[1] === 'b';
+        resolve(isBlack ? -lastCp : lastCp);
+      }
+    };
+    engine.postMessage(`position fen ${fen}`);
+    engine.postMessage(`go depth ${depth}`);
+  });
+}
+
+// Get the best move in SAN notation with a pre-initialized engine.
+function getBestMoveSan(engine: StockfishEngine, fen: string, depth: number): Promise<string> {
+  return new Promise((resolve) => {
+    engine.onmessage = (line: string) => {
+      if (line.startsWith('bestmove')) {
+        const uci = line.split(' ')[1] ?? '';
+        if (!uci || uci === '(none)') { resolve(''); return; }
+        const tmp = new Chess(fen);
+        try {
+          const mv = tmp.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
+          resolve(mv?.san ?? uci);
+        } catch {
+          resolve(uci);
         }
-      };
-      engine.postMessage('uci');
-      engine.postMessage(`position fen ${fen}`);
-      engine.postMessage(`go depth ${depth}`);
-    } catch {
-      resolve('');
-    }
+      }
+    };
+    engine.postMessage(`position fen ${fen}`);
+    engine.postMessage(`go depth ${depth}`);
   });
 }
 
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
 
   const { gameId, level = 'beginner' } = await req.json() as { gameId: string; level?: CoachLevel };
 
-  // Check for cached analysis
+  // Return cached analysis if available
   const { data: cached } = await supabase
     .from('ai_coach_analyses')
     .select('*')
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
   if (cached) return NextResponse.json(cached);
 
-  // Check one-free rule
+  // One-free-use gate
   const { count: freeCount } = await supabase
     .from('ai_coach_analyses')
     .select('id', { count: 'exact', head: true })
@@ -119,6 +119,14 @@ export async function POST(req: NextRequest) {
 
   if (!game?.pgn) return NextResponse.json({ error: 'Game not found or no PGN' }, { status: 404 });
 
+  // Initialize a single engine — proper UCI handshake done once.
+  let engine: StockfishEngine;
+  try {
+    engine = await createReadyEngine();
+  } catch {
+    return NextResponse.json({ error: 'Engine failed to initialize' }, { status: 500 });
+  }
+
   const chess = new Chess();
   chess.loadPgn(game.pgn);
   const history = chess.history({ verbose: true });
@@ -133,15 +141,30 @@ export async function POST(req: NextRequest) {
   let whiteMovesCount = 0;
   let blackMovesCount = 0;
 
-  for (let i = 0; i < Math.min(history.length, 60); i++) {
+  const ANALYSIS_DEPTH = 14;
+  const BEST_MOVE_DEPTH = 12;
+  const MAX_MOVES = 60;
+
+  // evals[i] = centipawn eval from white's perspective at position i
+  // evals[0] = starting position, evals[k] = after move k-1 (0-indexed)
+  const positionEvals: number[] = [];
+
+  // Evaluate the starting position
+  let prevEval = await evalPosition(engine, tempChess.fen(), ANALYSIS_DEPTH);
+  positionEvals.push(prevEval);
+
+  for (let i = 0; i < Math.min(history.length, MAX_MOVES); i++) {
     const move = history[i];
     const fenBefore = tempChess.fen();
-    const evalBefore = await analyzePosition(fenBefore, 14);
+    const evalBefore = prevEval; // reuse the previous position's eval — saves one engine call per move
 
     tempChess.move(move.san);
     const fenAfter = tempChess.fen();
-    const evalAfter = await analyzePosition(fenAfter, 14);
+    const evalAfter = await evalPosition(engine, fenAfter, ANALYSIS_DEPTH);
+    prevEval = evalAfter;
+    positionEvals.push(evalAfter); // evals[i+1]
 
+    // Drop is from the mover's perspective (positive = bad move for the mover)
     const isWhiteMove = move.color === 'w';
     const evalFromMover = isWhiteMove ? evalBefore : -evalBefore;
     const evalAfterFromMover = isWhiteMove ? evalAfter : -evalAfter;
@@ -152,8 +175,8 @@ export async function POST(req: NextRequest) {
     else { totalBlackAccuracy += accuracy; blackMovesCount++; }
 
     if (drop >= 200) {
-      const suggestedSan = await getBestMoveSan(fenBefore, 12);
-      const critique: MoveCritique = {
+      const suggestedSan = await getBestMoveSan(engine, fenBefore, BEST_MOVE_DEPTH);
+      blunders.push({
         move_number: Math.ceil((i + 1) / 2),
         san: move.san,
         fen_before: fenBefore,
@@ -163,12 +186,11 @@ export async function POST(req: NextRequest) {
         eval_drop: drop,
         quality: 'blunder',
         suggested_san: suggestedSan,
-        explanation_beginner: `${move.color === 'w' ? 'White' : 'Black'} played ${move.san}, which is a serious error. The evaluation dropped by ${(drop / 100).toFixed(1)} pawns. Consider ${suggestedSan} instead.`,
-        explanation_advanced: `${move.san} causes a centipawn loss of ${drop}. The engine prefers ${suggestedSan} (eval before: ${(evalBefore / 100).toFixed(2)}, after: ${(evalAfter / 100).toFixed(2)}).`,
-      };
-      blunders.push(critique);
+        explanation_beginner: `${move.color === 'w' ? 'White' : 'Black'} played ${move.san}, which is a serious error. The position dropped by ${(drop / 100).toFixed(1)} pawns. Consider ${suggestedSan || 'a different move'} instead.`,
+        explanation_advanced: `${move.san} causes a centipawn loss of ${drop}. Engine prefers ${suggestedSan || '?'} (eval: ${(evalBefore / 100).toFixed(2)} → ${(evalAfter / 100).toFixed(2)}).`,
+      });
     } else if (drop >= 100) {
-      const critique: MoveCritique = {
+      mistakes.push({
         move_number: Math.ceil((i + 1) / 2),
         san: move.san,
         fen_before: fenBefore,
@@ -178,10 +200,9 @@ export async function POST(req: NextRequest) {
         eval_drop: drop,
         quality: 'mistake',
         suggested_san: '',
-        explanation_beginner: `${move.san} is a mistake — there was a better option. Eval dropped by ${(drop / 100).toFixed(1)} pawns.`,
+        explanation_beginner: `${move.san} is a mistake — there was a better option. The position dropped by ${(drop / 100).toFixed(1)} pawns.`,
         explanation_advanced: `${move.san} causes ${drop} centipawn loss. Eval: ${(evalBefore / 100).toFixed(2)} → ${(evalAfter / 100).toFixed(2)}.`,
-      };
-      mistakes.push(critique);
+      });
     }
 
     if (Math.abs(drop) >= 150 && keyMoments.length < 5) {
@@ -193,6 +214,8 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  engine.postMessage('quit');
 
   const accuracyWhite = whiteMovesCount > 0 ? totalWhiteAccuracy / whiteMovesCount : 100;
   const accuracyBlack = blackMovesCount > 0 ? totalBlackAccuracy / blackMovesCount : 100;
@@ -208,6 +231,7 @@ export async function POST(req: NextRequest) {
     accuracy_black: Math.round(accuracyBlack * 100) / 100,
     level,
     was_free: !hasUsedFree,
+    evals: positionEvals,
   };
 
   const { data: saved, error } = await supabase
