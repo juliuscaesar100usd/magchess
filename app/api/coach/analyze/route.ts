@@ -11,9 +11,17 @@ type StockfishEngine = {
 };
 
 // Load engine via initEngine(), await the Promise, then complete the UCI handshake.
+// NOTE: stockfish's WASM loader assigns `fetch = null` (undeclared, non-strict) in Node.js,
+// which clobbers globalThis.fetch. Save and restore it so Supabase calls still work after.
 async function createReadyEngine(): Promise<StockfishEngine> {
+  const g = globalThis as Record<string, unknown>;
+  const savedFetch = g.fetch;
+
   const initEngine = ((await import('stockfish')).default) as unknown as (path?: string) => Promise<StockfishEngine>;
   const engine = await initEngine('single');
+
+  if (!g.fetch) g.fetch = savedFetch;
+
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Engine init timeout')), 15_000);
     engine.listener = (line: string) => {
