@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['stockfish'],
   async headers() {
     return [
       {
@@ -11,8 +12,10 @@ const nextConfig = {
       },
     ];
   },
-  webpack(config) {
-    config.resolve.fallback = { ...config.resolve.fallback, fs: false };
+  webpack(config, { isServer }) {
+    if (!isServer) {
+      config.resolve.fallback = { ...config.resolve.fallback, fs: false };
+    }
     return config;
   },
 };

@@ -2,38 +2,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { Chess } from 'chess.js';
 import type { CoachLevel, MoveCritique, KeyMoment } from '@/types/coach';
-import Stockfish from 'stockfish';
 
 export const runtime = 'nodejs';
 
 type StockfishEngine = {
-  postMessage: (msg: string) => void;
-  onmessage: (line: string) => void;
+  sendCommand: (msg: string) => void;
+  listener: ((line: string) => void) | null;
 };
 
-// Create one engine and wait for it to be fully ready before returning.
-function createReadyEngine(): Promise<StockfishEngine> {
-  return new Promise((resolve, reject) => {
-    const engine = Stockfish() as StockfishEngine;
-    const timer = setTimeout(() => reject(new Error('Engine init timeout')), 10_000);
-    engine.onmessage = (line: string) => {
+// Load engine via initEngine(), await the Promise, then complete the UCI handshake.
+async function createReadyEngine(): Promise<StockfishEngine> {
+  const initEngine = ((await import('stockfish')).default) as unknown as (path?: string) => Promise<StockfishEngine>;
+  const engine = await initEngine('single');
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Engine init timeout')), 15_000);
+    engine.listener = (line: string) => {
       if (line === 'uciok') {
-        engine.postMessage('isready');
+        engine.sendCommand('isready');
       } else if (line === 'readyok') {
         clearTimeout(timer);
-        resolve(engine);
+        resolve();
       }
     };
-    engine.postMessage('uci');
+    engine.sendCommand('uci');
   });
+  return engine;
 }
 
-// Evaluate a FEN position with a pre-initialized engine.
 // Returns centipawns from WHITE's perspective.
 function evalPosition(engine: StockfishEngine, fen: string, depth: number): Promise<number> {
   return new Promise((resolve) => {
     let lastCp = 0;
-    engine.onmessage = (line: string) => {
+    engine.listener = (line: string) => {
       if (line.includes('score cp')) {
         const m = line.match(/score cp (-?\d+)/);
         if (m) lastCp = parseInt(m[1], 10);
@@ -41,20 +41,19 @@ function evalPosition(engine: StockfishEngine, fen: string, depth: number): Prom
         const m = line.match(/score mate (-?\d+)/);
         if (m) lastCp = parseInt(m[1], 10) > 0 ? 30_000 : -30_000;
       } else if (line.startsWith('bestmove')) {
-        // Engine returns score from the side-to-move's perspective; normalise to white.
         const isBlack = fen.split(' ')[1] === 'b';
         resolve(isBlack ? -lastCp : lastCp);
       }
     };
-    engine.postMessage(`position fen ${fen}`);
-    engine.postMessage(`go depth ${depth}`);
+    engine.sendCommand(`position fen ${fen}`);
+    engine.sendCommand(`go depth ${depth}`);
   });
 }
 
-// Get the best move in SAN notation with a pre-initialized engine.
+// Returns the best move in SAN notation.
 function getBestMoveSan(engine: StockfishEngine, fen: string, depth: number): Promise<string> {
   return new Promise((resolve) => {
-    engine.onmessage = (line: string) => {
+    engine.listener = (line: string) => {
       if (line.startsWith('bestmove')) {
         const uci = line.split(' ')[1] ?? '';
         if (!uci || uci === '(none)') { resolve(''); return; }
@@ -67,8 +66,8 @@ function getBestMoveSan(engine: StockfishEngine, fen: string, depth: number): Pr
         }
       }
     };
-    engine.postMessage(`position fen ${fen}`);
-    engine.postMessage(`go depth ${depth}`);
+    engine.sendCommand(`position fen ${fen}`);
+    engine.sendCommand(`go depth ${depth}`);
   });
 }
 
@@ -119,7 +118,6 @@ export async function POST(req: NextRequest) {
 
   if (!game?.pgn) return NextResponse.json({ error: 'Game not found or no PGN' }, { status: 404 });
 
-  // Initialize a single engine — proper UCI handshake done once.
   let engine: StockfishEngine;
   try {
     engine = await createReadyEngine();
@@ -146,25 +144,23 @@ export async function POST(req: NextRequest) {
   const MAX_MOVES = 60;
 
   // evals[i] = centipawn eval from white's perspective at position i
-  // evals[0] = starting position, evals[k] = after move k-1 (0-indexed)
+  // evals[0] = starting position, evals[k] = after move k-1
   const positionEvals: number[] = [];
 
-  // Evaluate the starting position
   let prevEval = await evalPosition(engine, tempChess.fen(), ANALYSIS_DEPTH);
   positionEvals.push(prevEval);
 
   for (let i = 0; i < Math.min(history.length, MAX_MOVES); i++) {
     const move = history[i];
     const fenBefore = tempChess.fen();
-    const evalBefore = prevEval; // reuse the previous position's eval — saves one engine call per move
+    const evalBefore = prevEval;
 
     tempChess.move(move.san);
     const fenAfter = tempChess.fen();
     const evalAfter = await evalPosition(engine, fenAfter, ANALYSIS_DEPTH);
     prevEval = evalAfter;
-    positionEvals.push(evalAfter); // evals[i+1]
+    positionEvals.push(evalAfter);
 
-    // Drop is from the mover's perspective (positive = bad move for the mover)
     const isWhiteMove = move.color === 'w';
     const evalFromMover = isWhiteMove ? evalBefore : -evalBefore;
     const evalAfterFromMover = isWhiteMove ? evalAfter : -evalAfter;
@@ -215,7 +211,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  engine.postMessage('quit');
+  engine.sendCommand('quit');
 
   const accuracyWhite = whiteMovesCount > 0 ? totalWhiteAccuracy / whiteMovesCount : 100;
   const accuracyBlack = blackMovesCount > 0 ? totalBlackAccuracy / blackMovesCount : 100;
