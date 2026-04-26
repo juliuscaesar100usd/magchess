@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { Badge, Streak } from '@/types/user';
@@ -171,7 +172,7 @@ export default function ProfilePage() {
               const delta = ratingAfter && ratingBefore ? ratingAfter - ratingBefore : null;
 
               return (
-                <div key={g.id} className="grid grid-cols-[1fr_80px_80px_60px] gap-2 px-5 py-3 items-center hover:bg-zinc-800/20 transition-colors">
+                <Link key={g.id} href={`/game/${g.id}/review`} className="grid grid-cols-[1fr_80px_80px_60px] gap-2 px-5 py-3 items-center hover:bg-zinc-800/40 transition-colors cursor-pointer">
                   <div>
                     <div className="flex items-center gap-2">
                       <Swords size={13} className="text-zinc-500 flex-shrink-0" />
@@ -203,7 +204,7 @@ export default function ProfilePage() {
                   <div className="text-right text-xs text-zinc-500">
                     {new Date(g.started_at).toLocaleDateString()}
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

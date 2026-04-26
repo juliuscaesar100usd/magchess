@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { Profile, Badge, Streak } from '@/types/user';
 import type { RatingHistory, GameWithPlayers } from '@/types/game';
@@ -98,7 +99,7 @@ export default function PublicProfilePage({ params }: PageProps) {
           const isWin = (isWhite && g.result === 'white_wins') || (!isWhite && g.result === 'black_wins');
           const isDraw = g.result === 'draw';
           return (
-            <div key={g.id} className="grid grid-cols-[1fr_80px_60px] gap-2 px-5 py-3 items-center border-b border-zinc-800/50 last:border-0">
+            <Link key={g.id} href={`/game/${g.id}/review`} className="grid grid-cols-[1fr_80px_60px] gap-2 px-5 py-3 items-center border-b border-zinc-800/50 last:border-0 hover:bg-zinc-800/40 transition-colors cursor-pointer">
               <div className="flex items-center gap-2">
                 <Swords size={13} className="text-zinc-500" />
                 <span className="text-sm text-white">{isWhite ? g.black_player?.username ?? 'AI' : g.white_player?.username}</span>
@@ -107,7 +108,7 @@ export default function PublicProfilePage({ params }: PageProps) {
                 {g.result ? (isDraw ? 'Draw' : isWin ? 'Won' : 'Lost') : 'Ongoing'}
               </span>
               <span className="text-right text-xs text-zinc-500 capitalize">{g.mode}</span>
-            </div>
+            </Link>
           );
         })}
       </div>
