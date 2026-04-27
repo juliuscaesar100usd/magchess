@@ -4,6 +4,7 @@ import { Chess } from 'chess.js';
 import type { CoachLevel, MoveCritique, KeyMoment } from '@/types/coach';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 type StockfishEngine = {
   sendCommand: (msg: string) => void;
@@ -147,9 +148,9 @@ export async function POST(req: NextRequest) {
   let whiteMovesCount = 0;
   let blackMovesCount = 0;
 
-  const ANALYSIS_DEPTH = 14;
-  const BEST_MOVE_DEPTH = 12;
-  const MAX_MOVES = 60;
+  const ANALYSIS_DEPTH = 12;
+  const BEST_MOVE_DEPTH = 10;
+  const MAX_MOVES = 300;
 
   // evals[i] = centipawn eval from white's perspective at position i
   // evals[0] = starting position, evals[k] = after move k-1
