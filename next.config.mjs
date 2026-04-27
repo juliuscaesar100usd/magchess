@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: ['stockfish'],
+  outputFileTracingIncludes: {
+    '/api/coach/analyze': ['./node_modules/stockfish/bin/**/*'],
+  },
   async headers() {
     return [
       {

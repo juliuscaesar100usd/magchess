@@ -8,10 +8,8 @@ export function usePodcast() {
   useEffect(() => {
     const load = () => {
       const voices = window.speechSynthesis.getVoices();
-      voiceRef.current =
-        voices.find((v) => v.lang.startsWith('en') && v.localService) ??
-        voices.find((v) => v.lang.startsWith('en')) ??
-        null;
+      // No localService filter — Android devices often only have remote (non-local) voices.
+      voiceRef.current = voices.find((v) => v.lang.startsWith('en')) ?? null;
     };
     load();
     window.speechSynthesis.addEventListener('voiceschanged', load);
@@ -20,6 +18,9 @@ export function usePodcast() {
 
   const speak = useCallback((text: string) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    // resume() before cancel() — Android Chrome can get stuck in paused state,
+    // causing subsequent speak() calls to queue silently and never play.
+    window.speechSynthesis.resume();
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.05;

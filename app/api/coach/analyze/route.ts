@@ -18,7 +18,7 @@ async function createReadyEngine(): Promise<StockfishEngine> {
   const savedFetch = g.fetch;
 
   const initEngine = ((await import('stockfish')).default) as unknown as (path?: string) => Promise<StockfishEngine>;
-  const engine = await initEngine('single');
+  const engine = await initEngine('lite-single');
 
   if (!g.fetch) g.fetch = savedFetch;
 

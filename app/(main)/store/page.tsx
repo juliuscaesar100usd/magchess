@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { Coins, Brain, Palette, Check } from 'lucide-react';
+import { Coins, Brain, Palette, Check, Zap } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore, type BoardTheme } from '@/store/useSettingsStore';
 import { Button } from '@/components/ui/Button';
@@ -127,6 +127,24 @@ export default function StorePage() {
         <h1 className="text-2xl font-bold text-white">Store</h1>
         <p className="text-zinc-400 text-sm mt-1">Buy coins, unlock AI Coach, and customize your board</p>
       </div>
+
+      {/* Upgrade to Pro */}
+      <section>
+        <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-950/40 to-zinc-900 p-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-500/15 flex-shrink-0">
+              <Zap size={22} className="text-purple-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white text-lg">Upgrade to Pro</h3>
+              <p className="text-sm text-zinc-400 mt-0.5">Unlimited AI analysis + all chessboards unlocked</p>
+            </div>
+          </div>
+          <Button variant="secondary" className="flex-shrink-0 opacity-60 cursor-not-allowed" disabled>
+            $23.99 / mo
+          </Button>
+        </div>
+      </section>
 
       {/* Coin packages */}
       <section>
