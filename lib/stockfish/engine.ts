@@ -13,7 +13,7 @@ export class StockfishEngine {
   async init(): Promise<void> {
     if (this.worker) return;
 
-    this.worker = new Worker('/stockfish/stockfish.js');
+    this.worker = new Worker('/stockfish/stockfish-18-single.js');
     this.worker.onmessage = (e: MessageEvent) => {
       const line = e.data as string;
       if (line === 'uciok') {
