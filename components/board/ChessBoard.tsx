@@ -109,13 +109,23 @@ export function ChessBoard({ gameId }: ChessBoardProps) {
   const { sendMove, sendResign, sendDrawOffer, sendDrawAccept, sendDrawDecline } =
     useRealtimeGame(gameType === 'pvp' ? gameId : null, handleRealtimeEvent);
 
-  const makeAiMove = useCallback(async (engine: StockfishEngine) => {
+  // playerMoveSan: the SAN of the move the human just played, used for podcast commentary.
+  const makeAiMove = useCallback(async (engine: StockfishEngine, playerMoveSan?: string) => {
     if (isAiThinkingRef.current) return;
     isAiThinkingRef.current = true;
     const chess = chessRef.current;
 
-    let evalBefore = 0;
-    if (podcastEnabled) evalBefore = await engine.evaluate(chess.fen(), 12);
+    // All evaluations go through the engine's serial queue, so they never overlap.
+    // Evaluate current position (after player's move) first — needed for both player
+    // move commentary and as the "before" baseline for AI move commentary.
+    let evalCurrent = 0;
+    if (podcastEnabled) {
+      evalCurrent = await engine.evaluate(chess.fen(), 12);
+      if (playerMoveSan) {
+        const quality = getMoveQuality(prevEvalRef.current, evalCurrent, playerColor === 'white');
+        speak(generateCommentary(quality, playerMoveSan, playerColor === 'white' ? 'White' : 'Black'));
+      }
+    }
 
     const movetime = gameMode === 'bullet' ? 200 : gameMode === 'blitz' ? 500 : 1000;
     const bestMove = await engine.getBestMove(chess.fen(), aiLevel, movetime);
@@ -133,8 +143,9 @@ export function ChessBoard({ gameId }: ChessBoardProps) {
     if (podcastEnabled) {
       const evalAfter = await engine.evaluate(chess.fen(), 12);
       const aiIsBlack = playerColor === 'white';
-      const quality = getMoveQuality(evalBefore, evalAfter, !aiIsBlack);
+      const quality = getMoveQuality(evalCurrent, evalAfter, !aiIsBlack);
       speak(generateCommentary(quality, moveResult.san, aiIsBlack ? 'Black' : 'White'));
+      prevEvalRef.current = evalAfter;
     }
 
     if (isWhite) { blackTimer.stop(); blackTimer.addIncrement(); whiteTimer.start(); }
@@ -176,14 +187,6 @@ export function ChessBoard({ gameId }: ChessBoardProps) {
       setFen(newFen);
       setMoves(chess.history());
 
-      if (gameType === 'ai' && podcastEnabled && engineRef.current) {
-        engineRef.current.evaluate(newFen, 12).then((evalAfter) => {
-          const quality = getMoveQuality(prevEvalRef.current, evalAfter, playerColor === 'white');
-          prevEvalRef.current = evalAfter;
-          speak(generateCommentary(quality, moveResult.san, playerColor === 'white' ? 'White' : 'Black'));
-        });
-      }
-
       if (isWhite) { whiteTimer.stop(); whiteTimer.addIncrement(); blackTimer.start(); }
       else { blackTimer.stop(); blackTimer.addIncrement(); whiteTimer.start(); }
 
@@ -193,11 +196,12 @@ export function ChessBoard({ gameId }: ChessBoardProps) {
         sendMove({ from: sourceSquare, to: targetSquare, promotion, fen: newFen, pgn: chess.pgn(), moveNumber: chess.moveNumber() });
       } else if (gameType === 'ai' && engineRef.current) {
         const eng = engineRef.current;
-        setTimeout(() => makeAiMove(eng), 100);
+        const moveSan = moveResult.san;
+        setTimeout(() => makeAiMove(eng, moveSan), 100);
       }
       return true;
     },
-    [gameOver, playerColor, gameType, podcastEnabled, isWhite, whiteTimer, blackTimer, endGame, sendMove, speak, makeAiMove]
+    [gameOver, playerColor, gameType, isWhite, whiteTimer, blackTimer, endGame, sendMove, makeAiMove]
   );
 
   const handleResign = async () => {
