@@ -50,7 +50,7 @@ export default function ProfilePage() {
       setStreak(streakRes.data as Streak | null);
       setBadges((badgesRes.data as Badge[]) ?? []);
       setRatingHistory((ratingRes.data as RatingHistory[]) ?? []);
-      setGames((gamesRes.data as GameWithPlayers[]) ?? []);
+      setGames((gamesRes.data as unknown as GameWithPlayers[]) ?? []);
       setLoading(false);
     };
     load();
