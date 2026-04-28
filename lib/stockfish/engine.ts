@@ -9,6 +9,7 @@ export class StockfishEngine {
   private handlers: MessageHandler[] = [];
   private pendingReady: (() => void)[] = [];
   // All searches are enqueued on this chain so they never overlap.
+  // init() wires itself into this chain so searches wait for the engine to be ready.
   private searchChain: Promise<void> = Promise.resolve();
 
   private serialized<T>(fn: () => Promise<T>): Promise<T> {
@@ -18,12 +19,10 @@ export class StockfishEngine {
     return task;
   }
 
-  async init(): Promise<void> {
-    if (this.worker) return;
-
+  private async _doInit(): Promise<void> {
     this.worker = new Worker('/stockfish/stockfish-18-single.js');
     this.worker.onmessage = (e: MessageEvent) => {
-      const line = typeof e.data === 'string' ? e.data : '';
+      const line = typeof e.data === 'string' ? e.data.trim() : '';
       if (!line) return;
       if (line === 'uciok') {
         this.pendingReady.forEach((r) => r());
@@ -31,14 +30,14 @@ export class StockfishEngine {
       }
       this.handlers.forEach((h) => h(line));
     };
+    // worker.onerror causes the 15s race timeout to win, surfacing the failure.
+    this.worker.onerror = () => {};
 
-    // Wait for uciok.
-    await new Promise<void>((resolve) => {
-      this.pendingReady.push(resolve);
-      this.send('uci');
-    });
+    await Promise.race([
+      new Promise<void>((resolve) => { this.pendingReady.push(resolve); this.send('uci'); }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Engine timed out')), 15_000)),
+    ]);
 
-    // Wait for readyok (handler registered before sending isready to avoid any timing issue).
     await new Promise<void>((resolve) => {
       const handler: MessageHandler = (line) => {
         if (line === 'readyok') { this.off(handler); resolve(); }
@@ -50,6 +49,14 @@ export class StockfishEngine {
     // Signal new game once — clears hash tables. Not sent again between moves
     // so the engine keeps its transposition table across moves (faster, more accurate).
     this.send('ucinewgame');
+  }
+
+  async init(): Promise<void> {
+    if (this.worker) return;
+    // Wire init into the search chain: all searches wait for init to complete.
+    const initTask = this._doInit();
+    this.searchChain = initTask.then(() => undefined, () => undefined);
+    await initTask;
   }
 
   send(cmd: string): void {

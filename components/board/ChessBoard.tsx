@@ -42,6 +42,7 @@ export function ChessBoard({ gameId }: ChessBoardProps) {
   const [fen, setFen] = useState(chessRef.current.fen());
   const [moves, setMoves] = useState<string[]>([]);
   const [gameOver, setGameOver] = useState(false);
+  const [engineError, setEngineError] = useState(false);
   const [, setGameResult] = useState<GameResult | null>(null);
   const [showResignConfirm, setShowResignConfirm] = useState(false);
   const [drawOfferPending, setDrawOfferPending] = useState(false);
@@ -159,10 +160,12 @@ export function ChessBoard({ gameId }: ChessBoardProps) {
     if (gameType !== 'ai') return;
     const engine = new StockfishEngine();
     engineRef.current = engine;
-    engine.init().then(() => {
-      if (playerColor === 'white') whiteTimer.start();
-      else { blackTimer.start(); makeAiMove(engine); }
-    });
+    engine.init()
+      .then(() => {
+        if (playerColor === 'white') whiteTimer.start();
+        else { blackTimer.start(); makeAiMove(engine); }
+      })
+      .catch(() => setEngineError(true));
     return () => engine.destroy();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -215,6 +218,11 @@ export function ChessBoard({ gameId }: ChessBoardProps) {
   return (
     <div className="flex flex-col lg:flex-row gap-4 items-start justify-center">
       <div className="flex flex-col gap-3 w-full max-w-[560px]">
+        {engineError && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            Chess engine failed to load. Please refresh the page.
+          </div>
+        )}
         <Timer timeMs={opponentTimer.timeMs} active={!isWhite ? whiteTimer.running : blackTimer.running} label={opponentLabel} />
         <div className="rounded-xl overflow-hidden shadow-2xl border border-zinc-700">
           <Chessboard

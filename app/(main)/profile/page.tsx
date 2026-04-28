@@ -32,12 +32,16 @@ export default function ProfilePage() {
     const load = async () => {
       const supabase = createClient();
       const [streakRes, badgesRes, ratingRes, gamesRes] = await Promise.all([
-        supabase.from('streaks').select('*').eq('user_id', profile.id).single(),
-        supabase.from('badges').select('*').eq('user_id', profile.id).order('earned_at', { ascending: false }),
-        supabase.from('rating_history').select('*').eq('user_id', profile.id).order('recorded_at', { ascending: true }).limit(50),
+        supabase.from('streaks').select('current_streak, best_streak').eq('user_id', profile.id).single(),
+        supabase.from('badges').select('id, badge_key, badge_label').eq('user_id', profile.id).order('earned_at', { ascending: false }),
+        supabase.from('rating_history').select('rating_after').eq('user_id', profile.id).order('recorded_at', { ascending: true }).limit(50),
         supabase
           .from('games')
-          .select('*, white_player:white_player_id(username, rating), black_player:black_player_id(username, rating)')
+          .select(`id, white_player_id, black_player_id, ai_level, mode, result,
+                   stake_amount, white_rating_before, white_rating_after,
+                   black_rating_before, black_rating_after, started_at,
+                   white_player:white_player_id(username),
+                   black_player:black_player_id(username)`)
           .or(`white_player_id.eq.${profile.id},black_player_id.eq.${profile.id}`)
           .order('started_at', { ascending: false })
           .limit(20),

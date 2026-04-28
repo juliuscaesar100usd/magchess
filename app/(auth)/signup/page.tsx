@@ -63,6 +63,7 @@ export default function SignupPage() {
     setServerError('');
     const supabase = createClient();
 
+    // Stage 1: try normal signup (sends confirmation email when under rate limit).
     const { error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
@@ -72,18 +73,47 @@ export default function SignupPage() {
       },
     });
 
-    if (error) {
+    if (!error) {
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session?.user) {
+        await supabase
+          .from('profiles')
+          .update({ city: data.city, country: data.country, username: data.username })
+          .eq('id', session.session.user.id);
+      }
+      router.push('/game');
+      router.refresh();
+      return;
+    }
+
+    // Stage 2: rate limit fallback — auto-confirm via admin API (no email sent).
+    const isRateLimit =
+      error.message.toLowerCase().includes('rate limit') ||
+      error.message.toLowerCase().includes('email rate');
+    if (!isRateLimit) {
       setServerError(error.message);
       return;
     }
 
-    // Update profile with city and country
-    const { data: session } = await supabase.auth.getSession();
-    if (session.session?.user) {
-      await supabase
-        .from('profiles')
-        .update({ city: data.city, country: data.country, username: data.username })
-        .eq('id', session.session.user.id);
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      setServerError(result.error ?? 'Something went wrong. Please try again.');
+      return;
+    }
+
+    // Auto-confirm succeeded — sign in immediately.
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+    if (signInError) {
+      setServerError(signInError.message);
+      return;
     }
 
     router.push('/game');

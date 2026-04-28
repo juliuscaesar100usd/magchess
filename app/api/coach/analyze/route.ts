@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
     const evalAfterFromMover = isWhiteMove ? evalAfter : -evalAfter;
     const drop = evalFromMover - evalAfterFromMover;
 
-    const accuracy = Math.max(0, 100 - Math.min(100, drop / 5));
+    const accuracy = Math.max(0, Math.min(100, 100 - drop / 5));
     if (isWhiteMove) { totalWhiteAccuracy += accuracy; whiteMovesCount++; }
     else { totalBlackAccuracy += accuracy; blackMovesCount++; }
 
