@@ -22,6 +22,14 @@ Core flow
 
 ---
 
+## Uniqueness from other platforms
+
+- Chess Podcast Mode - While playing versus Computer, there is an audio-commentary (that you can turn off) via Web Speech API
+- Location Rank System - Each user is ranked by rating globally (among other users across the globe) and locally (among other users across the city)
+- Stake System - Before playing against another player, user can set up the stake (10 coins; 20 coins; 50 coins and so on ...). The winner gets all the coins decreased by 10% (fee)
+
+---
+
 ## Tech Stack
 
 | Area | Stack |
