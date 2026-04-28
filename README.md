@@ -14,7 +14,7 @@ Core flow
 
 - Sign up at `/signup` - choose a username, country, and city. You start with 50 free coins.
 - Play vs AI at `/game` - select Bullet/Blitz/Rapid, pick AI difficulty (1000–2500 ELO), click "Play vs Computer". Enable the Commentary toggle for audio narration during the game.
-- After the game, AI Coach appears - click "Analyze Game" for your free analysis. View blunders, mistakes, and replay the game with the eval bar.
+- After the game, AI Coach appears - wait 3-5 seconds, click "Analyze Game" for your free analysis. View blunders, mistakes, and replay the game with the eval bar.
 - Play vs Player - select "vs Player", choose a stake amount, click "Find Opponent". Open two browser tabs with different accounts to test matchmaking.
 - Leaderboard at `/leaderboard` - switch between Global and My City views.
 - Store at `/store` - buy coins with Stripe test card, purchase AI Coach or board themes.
@@ -24,6 +24,7 @@ Core flow
 
 ## Uniqueness from other platforms
 
+- AI Coach Analysis - Choose the particular game, click on "Analyze game", get full analysis of each move with evaluation bar
 - Chess Podcast Mode - While playing versus Computer, there is an audio-commentary (that you can turn off) via Web Speech API
 - Location Rank System - Each user is ranked by rating globally (among other users across the globe) and locally (among other users across the city)
 - Stake System - Before playing against another player, user can set up the stake (10 coins; 20 coins; 50 coins and so on ...). The winner gets all the coins decreased by 10% (fee)
