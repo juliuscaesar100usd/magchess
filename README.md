@@ -1,6 +1,6 @@
-# MagChess
+# MagChess (nFactorial Incubator 2026)
 
-A competitive chess platform I built for players who want more than just a board. MagChess combines real ELO ratings, stake wagering, AI-powered post-game coaching, and live audio commentary — all in one place. Whether you're grinding ranked games against Stockfish or challenging a friend with coins on the line, there's always something at stake.
+A competitive chess platform I built for players who want more than just a board. MagChess combines real ELO ratings, stake wagering, AI-powered post-game coaching, and live audio commentary - all in one place. Whether you're grinding ranked games against Stockfish or challenging a friend with coins on the line, there's always something at stake.
 
 ---
 
@@ -12,13 +12,13 @@ Full walkthrough: [https://youtu.be/tf7OXDepd64](https://youtu.be/tf7OXDepd64)
 
 Core flow
 
-- Sign up at `/signup` — choose a username, country, and city. You start with 50 free coins.
-- Play vs AI at `/game` — select Bullet/Blitz/Rapid, pick AI difficulty (1000–2500 ELO), click "Play vs Computer". Enable the Commentary toggle for audio narration during the game.
-- After the game, AI Coach appears — click "Analyze Game" for your free analysis. View blunders, mistakes, and replay the game with the eval bar.
-- Play vs Player — select "vs Player", choose a stake amount, click "Find Opponent". Open two browser tabs with different accounts to test matchmaking.
-- Leaderboard at `/leaderboard` — switch between Global and My City views.
-- Store at `/store` — buy coins with Stripe test card, purchase AI Coach or board themes.
-- Profile at `/profile` — view rating chart, game history, and earned badges.
+- Sign up at `/signup` - choose a username, country, and city. You start with 50 free coins.
+- Play vs AI at `/game` - select Bullet/Blitz/Rapid, pick AI difficulty (1000–2500 ELO), click "Play vs Computer". Enable the Commentary toggle for audio narration during the game.
+- After the game, AI Coach appears - click "Analyze Game" for your free analysis. View blunders, mistakes, and replay the game with the eval bar.
+- Play vs Player - select "vs Player", choose a stake amount, click "Find Opponent". Open two browser tabs with different accounts to test matchmaking.
+- Leaderboard at `/leaderboard` - switch between Global and My City views.
+- Store at `/store` - buy coins with Stripe test card, purchase AI Coach or board themes.
+- Profile at `/profile` - view rating chart, game history, and earned badges.
 
 ---
 
@@ -160,7 +160,7 @@ magchess/
 ## Notes
 
 - AI Coach analysis runs Stockfish at depth 14, staying within Vercel's free plan 60-second function timeout.
-- Stockfish WASM requires Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers — configured in `next.config.mjs`.
+- Stockfish WASM requires Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers - configured in `next.config.mjs`.
 - All coin mutations use a PostgreSQL `SELECT FOR UPDATE` RPC to prevent race conditions.
 - The Podcast Mode uses the browser's Web Speech API (best in Chrome, Edge, Safari).
 - The first AI Coach analysis per user is free. Subsequent uses require either purchasing AI Coach (500 coins) in the Store.
